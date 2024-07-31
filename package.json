@@ -1,22 +1,23 @@
 {
-  "name": "your-library-name",
+  "name": "sslkit",
   "version": "0.0.1",
-  "description": "Your library description",
+  "description": "A tool to convert and manage your SSL certificates efficiently.",
   "main": "dist/library.umd.js",
   "module": "dist/library.es.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "your-cli-command": "dist/cli.js"
+    "sslkit": "dist/cli.js"
   },
   "scripts": {
     "build": "vite build && tsup && tsc --emitDeclarationOnly",
-    "prepublishOnly": "npm run build && np --no-cleanup --yolo --no-publish --any-branch"
+    "prepublishOnly": "npm run build && np --no-cleanup --yolo --no-publish --any-branch",
+    "test": "sslkit -d certificate"
   },
   "keywords": [
     "note-taking",
     "productivity"
   ],
-  "author": "Your name",
+  "author": "Alioth",
   "license": "ISC",
   "files": [
     "dist/**/*",
@@ -35,6 +36,7 @@
   "devDependencies": {
     "@types/node": "^20.14.2",
     "np": "^10.0.5",
+    "rollup-plugin-polyfill-node": "^0.13.0",
     "tsup": "^8.1.0",
     "typescript": "^5.4.5",
     "vite": "^5.2.13"
