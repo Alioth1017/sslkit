@@ -1,10 +1,11 @@
 import { Command } from "commander";
 import { Options, CertificateGenerator } from "./index";
+const pkg = require("../package.json");
 const program = new Command();
 
 program
   .name("sslkit")
-  .version("0.0.1")
+  .version(pkg.version)
   .description("sslkit - A command line tool for ssl certificate.")
   .usage("[options]")
   .option("-m, --mode <mode>", "Mode of the certificate to generate", "pfx")
