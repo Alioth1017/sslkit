@@ -7,6 +7,7 @@ export default defineConfig({
   outDir: 'dist',
   clean: false,
   dts: false,
+  noExternal: [], // Add modules like 'fs' or 'path' here if you want to bundle them
   banner: {
     js: '#!/usr/bin/env node'
   }
