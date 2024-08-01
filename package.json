@@ -1,6 +1,6 @@
 {
   "name": "sslkit",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A tool to convert and manage your SSL certificates efficiently.",
   "main": "dist/library.umd.js",
   "module": "dist/library.es.js",
