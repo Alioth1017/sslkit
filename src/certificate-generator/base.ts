@@ -1,5 +1,6 @@
 import * as path from "path";
 import * as fs from "fs/promises";
+import { execCommand } from "../utils";
 
 export type FileInfo = {
   filePath: string;
@@ -48,28 +49,58 @@ export abstract class CertificateGeneratorBase {
     }
   }
 
-  protected async findKeyAndPem(files: FileInfo[]) {
-    try {
-      let keyFile: string | null = null;
-      let pemFile: string | null = null;
-
-      for (const file of files) {
-        const { filePath, fileExtension, isFile } = file;
-
-        if (isFile) {
-          if (!keyFile && fileExtension === ".key") {
-            keyFile = filePath;
-          } else if (!pemFile && fileExtension === ".pem") {
-            pemFile = filePath;
-          }
-        }
-        if (keyFile && pemFile) {
-          break;
-        }
+  protected findKeyFile(files: FileInfo[]): string | null {
+    for (const file of files) {
+      if (file.isFile && file.fileExtension === ".key") {
+        return file.filePath;
       }
-      return { keyFile, pemFile };
+    }
+    return null;
+  }
+
+  protected findPemFile(files: FileInfo[]): string | null {
+    for (const file of files) {
+      if (file.isFile && file.fileExtension === ".pem") {
+        return file.filePath;
+      }
+    }
+    return null;
+  }
+
+  protected findCrtOrCerFile(files: FileInfo[]): string | null {
+    for (const file of files) {
+      if (
+        file.isFile &&
+        (file.fileExtension === ".crt" || file.fileExtension === ".cer")
+      ) {
+        return file.filePath;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * 将指定 CRT/CER 文件转换为 PEM 文件，若 PEM 已存在则直接返回。
+   * @param crtOrCerPath 输入的 CRT/CER 文件路径
+   * @param pemPath 输出 PEM 路径（可选，默认同目录同名 .pem）
+   * @returns PEM 文件路径
+   */
+  protected async convertCrtOrCerToPem(crtOrCerPath: string, pemPath?: string): Promise<string> {
+    if (!crtOrCerPath) throw new Error("未指定 CRT/CER 文件路径");
+    const outPem = pemPath || crtOrCerPath.replace(/\.(crt|cer)$/i, ".pem");
+    try {
+      // 若 PEM 已存在则直接返回
+      try {
+        await fs.access(outPem);
+        return outPem;
+      } catch {
+        // 文件不存在，继续转换
+      }
+      const convertCmd = `${this.opensslPath} x509 -in "${crtOrCerPath}" -out "${outPem}" -outform PEM`;
+      await execCommand(convertCmd);
+      return outPem;
     } catch (err) {
-      throw new Error(`Error reading directory: ${(err as Error).message}`);
+      throw new Error(`Failed to convert CRT/CER to PEM: ${(err as Error).message}`);
     }
   }
 }
