@@ -10,12 +10,12 @@ export class PfxCertificateGenerator extends CertificateGeneratorBase {
   async generate() {
     try {
       const files = await this.getFilesInfo(this.directory);
-      const keyFile = this.findKeyFile(files);
-      let pemFile = this.findPemFile(files);
+      const keyFile = await this.findKeyFile(files);
+      let pemFile = await this.findPemFile(files);
 
       // 若无 PEM，自动尝试转换第一个 CRT/CER
       if (!pemFile) {
-        const crtOrCerFile = this.findCrtOrCerFile(files);
+        const crtOrCerFile = await this.findCrtOrCerFile(files);
         if (crtOrCerFile) {
           try {
             pemFile = await this.convertCrtOrCerToPem(crtOrCerFile);
@@ -54,7 +54,9 @@ export class PfxCertificateGenerator extends CertificateGeneratorBase {
       console.log(`生成 PFX 时使用的 key: ${keyFile}, pem: ${pemFile}`);
       await execCommand(pfxCommand);
       await fs.writeFile(pfxPasswordOutput, this.exportPassword);
-      console.log(`PFX 文件已生成: ${output}\n导出密码已保存到: ${pfxPasswordOutput}，请妥善保管。`);
+      console.log(
+        `PFX 文件已生成: ${output}\n导出密码已保存到: ${pfxPasswordOutput}，请妥善保管。`
+      );
     } catch (error) {
       logError(`生成 PFX 过程出错: ${(error as Error).message}`);
     }

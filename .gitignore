@@ -73,3 +73,9 @@ dist/
 
 ## DynamoDB Local files
 .dynamodb/
+
+
+/certificate/pfx1/certificate.pfx
+/certificate/pfx1/pfx-password.txt
+/certificate/pfx2/certificate.pfx
+/certificate/pfx2/pfx-password.txt

@@ -11,7 +11,8 @@
   "scripts": {
     "build": "rollup -c && tsup && tsc --emitDeclarationOnly",
     "prepublishOnly": "npm run build && np --no-cleanup --yolo --no-publish --any-branch",
-    "test": "dist/cli.js -d certificate"
+    "test1": "dist/cli.js -m pfx -d certificate/pfx1",
+    "test2": "dist/cli.js -m pfx -d certificate/pfx2"
   },
   "keywords": [
     "note-taking",
