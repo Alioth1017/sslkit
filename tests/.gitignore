@@ -1,0 +1,17 @@
+# 测试输出
+output/
+
+# 临时文件
+*.tmp
+*.temp
+*_temp.*
+*_combined.*
+
+# 密码文件
+*password.txt
+*.pfx
+*.jks
+
+# 不忽略示例文件
+!fixtures/**/*.pfx
+!fixtures/**/*password.txt

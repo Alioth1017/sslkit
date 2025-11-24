@@ -54,8 +54,12 @@ export class PfxCertificateGenerator extends CertificateGeneratorBase {
       console.log(`生成 PFX 时使用的 key: ${keyFile}, pem: ${pemFile}`);
       await execCommand(pfxCommand);
       await fs.writeFile(pfxPasswordOutput, this.exportPassword);
+      console.log("\n✅ PFX 证书生成成功!");
+      console.log(`📁 证书文件: ${output}`);
+      console.log(`🔑 密码文件: ${pfxPasswordOutput}`);
+      console.log(`⚠️  请妥善保管密码文件，部署时需要使用。`);
       console.log(
-        `PFX 文件已生成: ${output}\n导出密码已保存到: ${pfxPasswordOutput}，请妥善保管。`
+        `\n💡 IIS/Windows 配置提示:\n   1. 导入 PFX 文件到服务器\n   2. 在 IIS 中绑定证书到网站\n   3. 使用密码文件中的密码完成导入`
       );
     } catch (error) {
       logError(`生成 PFX 过程出错: ${(error as Error).message}`);

@@ -3,6 +3,7 @@ import { CrtCertificateGenerator } from "./certificate-generator/crt-generator";
 import { JksCertificateGenerator } from "./certificate-generator/jks-generator";
 import { PemCertificateGenerator } from "./certificate-generator/pem-generator";
 import { PfxCertificateGenerator } from "./certificate-generator/pfx-generator";
+import { Validator } from "./validator";
 
 export type CertificateGeneratorMode = "pem" | "pfx" | "crt" | "jks";
 export interface Options {
@@ -18,6 +19,7 @@ export interface Options {
   exportPassword: string;
   outputFileName?: string;
   opensslPath?: string;
+  skipValidation?: boolean; // 跳过验证（仅用于测试）
 }
 
 export class CertificateGenerator {
@@ -26,6 +28,7 @@ export class CertificateGenerator {
   private exportPassword: string;
   private outputFileName: string;
   private opensslPath: string;
+  private skipValidation: boolean;
 
   constructor(options: Options) {
     this.directory = options.directory;
@@ -33,14 +36,29 @@ export class CertificateGenerator {
     this.outputFileName = options.outputFileName || "certificate";
     this.opensslPath = options.opensslPath || "openssl";
     this.mode = options.mode || "pfx";
+    this.skipValidation = options.skipValidation || false;
   }
 
   async execute() {
     try {
+      // 执行预检查
+      if (!this.skipValidation) {
+        const isValid = await Validator.preflightCheck(
+          this.mode,
+          this.directory,
+          this.opensslPath,
+          this.exportPassword
+        );
+        if (!isValid) {
+          console.error("预检查失败，终止操作。");
+          return;
+        }
+      }
+
       let generator = this.getGenerator();
       await generator.generate();
     } catch (error) {
-      console.error("Error generating certificate:", error);
+      console.error("生成证书时发生错误:", error);
     }
   }
 
