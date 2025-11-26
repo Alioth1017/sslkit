@@ -1,11 +1,25 @@
+import * as fs from "fs";
+import * as path from "path";
 import { Command } from "commander";
-import { Options, CertificateGenerator } from "./index";
-const pkg = require("../package.json");
+import type { Options } from "./index.ts";
+import { CertificateGenerator } from "./index.ts";
+
+function getVersionSync(): string {
+  try {
+    const pkgPath = path.resolve(__dirname, "../package.json");
+    const pkgRaw = fs.readFileSync(pkgPath, "utf8");
+    const pkg = JSON.parse(pkgRaw);
+    return pkg.version || "";
+  } catch {
+    return "";
+  }
+}
+
 const program = new Command();
 
 program
   .name("sslkit")
-  .version(pkg.version)
+  .version(getVersionSync())
   .description(
     "SSLKit - A powerful CLI tool for SSL certificate conversion\n\n" +
       "Supported formats: PEM, PFX, CRT, JKS\n" +

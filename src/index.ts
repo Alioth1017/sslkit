@@ -1,9 +1,9 @@
-import { CertificateGeneratorBase } from "./certificate-generator/base";
-import { CrtCertificateGenerator } from "./certificate-generator/crt-generator";
-import { JksCertificateGenerator } from "./certificate-generator/jks-generator";
-import { PemCertificateGenerator } from "./certificate-generator/pem-generator";
-import { PfxCertificateGenerator } from "./certificate-generator/pfx-generator";
-import { Validator } from "./validator";
+import { CertificateGeneratorBase } from "./certificate-generator/base.ts";
+import { CrtCertificateGenerator } from "./certificate-generator/crt-generator.ts";
+import { JksCertificateGenerator } from "./certificate-generator/jks-generator.ts";
+import { PemCertificateGenerator } from "./certificate-generator/pem-generator.ts";
+import { PfxCertificateGenerator } from "./certificate-generator/pfx-generator.ts";
+import { Validator } from "./validator.ts";
 
 export type CertificateGeneratorMode = "pem" | "pfx" | "crt" | "jks";
 export interface Options {

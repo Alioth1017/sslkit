@@ -1,16 +1,24 @@
 import * as path from "path";
-import * as fs from "fs/promises";
-import { execCommand, logError } from "../utils";
-import { CertificateGeneratorBase } from "./base";
+import {
+  execCommand,
+  logError,
+  logInfo,
+  logSuccess,
+  safeUnlink,
+} from "../utils.ts";
+import type { FileInfo } from "./base.ts";
+import { CertificateGeneratorBase } from "./base.ts";
 
 export class JksCertificateGenerator extends CertificateGeneratorBase {
   /**
    * 生成 JKS 文件。JKS (Java KeyStore) 主要用于 Java 应用程序和 Tomcat。
    * 转换流程: PFX -> P12 -> JKS (使用 keytool)
    */
-  async generate() {
+  async generate(): Promise<void> {
+    let tempPfxPath: string | null = null;
     try {
       const files = await this.getFilesInfo(this.directory);
+      await this.updateExportPassword(files);
       let pfxFile = files.find((f) => f.isFile && f.fileExtension === ".pfx");
 
       // 如果没有 PFX，尝试从 PEM + KEY 创建
@@ -19,11 +27,8 @@ export class JksCertificateGenerator extends CertificateGeneratorBase {
         const keyFile = await this.findKeyFile(files);
 
         if (pemFile && keyFile) {
-          console.log("未找到 PFX 文件，将从 PEM 和 KEY 创建临时 PFX...");
-          const tempPfxPath = await this.createPfxFromPemAndKey(
-            pemFile,
-            keyFile
-          );
+          logInfo("未找到 PFX 文件，将从 PEM 和 KEY 创建临时 PFX...");
+          tempPfxPath = await this.createPfxFromPemAndKey(pemFile, keyFile);
           pfxFile = {
             filePath: tempPfxPath,
             isFile: true,
@@ -37,8 +42,18 @@ export class JksCertificateGenerator extends CertificateGeneratorBase {
       }
 
       await this.generateJks(pfxFile.filePath);
+
+      // 清理临时 PFX 文件
+      if (tempPfxPath) {
+        await safeUnlink(tempPfxPath);
+      }
     } catch (err) {
       logError(`生成 JKS 失败: ${(err as Error).message}`);
+      // 确保清理临时文件
+      if (tempPfxPath) {
+        await safeUnlink(tempPfxPath);
+      }
+      throw err;
     }
   }
 
@@ -66,25 +81,24 @@ export class JksCertificateGenerator extends CertificateGeneratorBase {
   /**
    * 将 PFX/P12 转换为 JKS 格式
    */
-  private async generateJks(pfxFile: string) {
+  private async generateJks(pfxFile: string): Promise<void> {
     const jksOutput = path.join(this.directory, this.outputFileName + ".jks");
-    const jksPasswordOutput = path.join(this.directory, "jks-password.txt");
 
     try {
-      console.log(`将 PFX 转换为 JKS: ${pfxFile}`);
+      logInfo(`将 PFX 转换为 JKS: ${pfxFile}`);
 
       // 使用 keytool 将 PKCS12 导入到 JKS
       // 注意: JDK 9+ 推荐使用 PKCS12 作为默认 keystore 类型
       const jksCommand = `keytool -importkeystore -srckeystore "${pfxFile}" -srcstoretype PKCS12 -srcstorepass ${this.exportPassword} -destkeystore "${jksOutput}" -deststoretype JKS -deststorepass ${this.exportPassword} -noprompt`;
 
       await execCommand(jksCommand);
-      await fs.writeFile(jksPasswordOutput, this.exportPassword);
+      const passwordFilePath = await this.savePasswordFile("jks-password.txt");
 
-      console.log("\n✅ JKS 密钥库生成成功!");
-      console.log(`📁 JKS 文件: ${jksOutput}`);
-      console.log(`🔑 密码文件: ${jksPasswordOutput}`);
-      console.log(`⚠️  请妥善保管密码文件，部署时需要使用。`);
-      console.log(
+      logSuccess("JKS 密钥库生成成功!");
+      logInfo(`📁 JKS 文件: ${jksOutput}`);
+      logInfo(`🔑 密码文件: ${passwordFilePath}`);
+      logInfo(`⚠️  请妥善保管密码文件，部署时需要使用。`);
+      logInfo(
         `\n💡 Tomcat 配置示例:\n   keystoreFile="${jksOutput}"\n   keystorePass="${this.exportPassword}"\n   keystoreType="JKS"`
       );
     } catch (error) {
@@ -96,6 +110,7 @@ export class JksCertificateGenerator extends CertificateGeneratorBase {
       } else {
         logError(`生成 JKS 过程出错: ${errorMsg}`);
       }
+      throw error;
     }
   }
 }

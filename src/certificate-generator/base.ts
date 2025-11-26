@@ -1,6 +1,6 @@
 import * as path from "path";
 import * as fs from "fs/promises";
-import { execCommand } from "../utils";
+import { execCommand } from "../utils.ts";
 
 export type FileInfo = {
   filePath: string;
@@ -47,6 +47,102 @@ export abstract class CertificateGeneratorBase {
     } catch (err) {
       throw new Error(`Error reading directory: ${(err as Error).message}`);
     }
+  }
+
+  /**
+   * 查找目录下包含 password 的文件（如 pfx-password.txt），返回内容字符串。
+   * 支持常见命名如 password.txt, pfx-password.txt, *.password, *.pass 等。
+   * 若未找到则返回 null。
+   */
+  protected async findPassword(files: FileInfo[]): Promise<string | null> {
+    const passwordFilePatterns = [/password/i, /pass/i];
+    for (const file of files) {
+      if (!file.isFile) continue;
+      if (
+        passwordFilePatterns.some((pat) => pat.test(file.fileName)) ||
+        [".password", ".pass", ".txt"].includes(file.fileExtension)
+      ) {
+        try {
+          const content = await fs.readFile(file.filePath, "utf8");
+          if (content.trim()) return content.trim();
+        } catch {
+          // 忽略读取错误
+        }
+      }
+    }
+    return null;
+  }
+
+  /** 更新 exportPassword，如果 password 文件存在且 exportPassword 为默认值 */
+  protected async updateExportPassword(files: FileInfo[]): Promise<void> {
+    const password = await this.findPassword(files);
+    if (this.exportPassword === "123456" && password) {
+      this.exportPassword = password;
+    }
+  }
+
+  /**
+   * 从 PFX 文件提取证书（PEM 格式，不含私钥）
+   * @param pfxFile PFX 文件路径
+   * @param outputPath 输出 PEM 路径（可选）
+   * @returns PEM 文件路径
+   */
+  protected async extractCertFromPfx(
+    pfxFile: string,
+    outputPath?: string
+  ): Promise<string> {
+    const pemOutput =
+      outputPath ||
+      path.join(this.directory, this.outputFileName + "_temp.pem");
+    try {
+      const certCommand = `${this.opensslPath} pkcs12 -in "${pfxFile}" -clcerts -nokeys -out "${pemOutput}" -passin pass:${this.exportPassword}`;
+      await execCommand(certCommand);
+      return pemOutput;
+    } catch (error) {
+      throw new Error(`从 PFX 提取证书失败: ${(error as Error).message}`);
+    }
+  }
+
+  /**
+   * 从 PFX 文件提取私钥（PKCS#8 格式，无加密）
+   * @param pfxFile PFX 文件路径
+   * @param outputPath 输出私钥路径（可选）
+   * @returns 私钥文件路径
+   */
+  protected async extractKeyFromPfx(
+    pfxFile: string,
+    outputPath?: string
+  ): Promise<string> {
+    const tempKeyPath = path.join(
+      this.directory,
+      this.outputFileName + ".temp.key"
+    );
+    const keyOutput =
+      outputPath || path.join(this.directory, this.outputFileName + ".key");
+    try {
+      // 先提取（可能包含 Bag Attributes）
+      const extractCmd = `${this.opensslPath} pkcs12 -in "${pfxFile}" -nocerts -nodes -out "${tempKeyPath}" -passin pass:${this.exportPassword}`;
+      await execCommand(extractCmd);
+      // 使用 pkey 过滤掉 Bag Attributes，输出纯净的私钥
+      const cleanCmd = `${this.opensslPath} pkey -in "${tempKeyPath}" -out "${keyOutput}"`;
+      await execCommand(cleanCmd);
+      // 清理临时文件
+      const { safeUnlink } = await import("../utils.ts");
+      await safeUnlink(tempKeyPath);
+      return keyOutput;
+    } catch (error) {
+      throw new Error(`从 PFX 提取私钥失败: ${(error as Error).message}`);
+    }
+  }
+
+  /**
+   * 保存密码到指定文件
+   * @param fileName 密码文件名（如 pfx-password.txt）
+   */
+  protected async savePasswordFile(fileName: string): Promise<string> {
+    const passwordFilePath = path.join(this.directory, fileName);
+    await fs.writeFile(passwordFilePath, this.exportPassword);
+    return passwordFilePath;
   }
 
   protected async findKeyFile(files: FileInfo[]): Promise<string | null> {
