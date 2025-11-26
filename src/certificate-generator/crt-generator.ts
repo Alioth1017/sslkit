@@ -6,44 +6,60 @@ import { CertificateGeneratorBase } from "./base";
 export class CrtCertificateGenerator extends CertificateGeneratorBase {
   /**
    * 生成 CRT 文件。支持从 PEM、PFX 等格式转换为 CRT。
-   * CRT 通常用于 Apache 服务器。
+   * 若目录中不存在 RSA 私钥（PKCS#1：BEGIN RSA PRIVATE KEY），则自动生成一个。
    */
-  async generate() {
+  async generate(): Promise<void> {
     try {
       const files = await this.getFilesInfo(this.directory);
       let pemFile = await this.findPemFile(files);
-      const keyFile = await this.findKeyFile(files);
+      let keyFile = await this.findKeyFile(files);
 
-      // 如果没有 PEM 文件，尝试从 PFX 提取
+      // 若无 PEM 尝试从 PFX 提取
       if (!pemFile) {
-        const pfxFile = files.find(
-          (f) => f.isFile && f.fileExtension === ".pfx"
-        );
-        if (pfxFile) {
-          pemFile = await this.extractPemFromPfx(pfxFile.filePath);
+        const pfx = files.find((f) => f.isFile && f.fileExtension === ".pfx");
+        if (pfx) {
+          pemFile = await this.extractPemFromPfx(pfx.filePath);
         }
       }
-
       if (!pemFile) {
-        logError("未找到 PEM 文件或 PFX 文件。");
+        logError("未找到 PEM 或 PFX 证书文件，无法生成 CRT。");
         return;
       }
 
-      await this.generateCrt(pemFile, keyFile);
+      // 扫描是否已有 RSA 私钥（返回路径）
+      const rsaKeyPath = await this.findRsaPrivateKey(files);
+      if (!rsaKeyPath) {
+        const generatedKeyPath = path.join(
+          this.directory,
+          this.outputFileName + ".rsa.key"
+        );
+        console.log(`未检测到 RSA 私钥，自动生成: ${generatedKeyPath}`);
+        const genKeyCmd = `${this.opensslPath} genrsa -out "${generatedKeyPath}" 2048`;
+        try {
+          await execCommand(genKeyCmd);
+          keyFile = generatedKeyPath; // 优先使用新生成的 RSA 私钥
+        } catch (e) {
+          logError(`生成 RSA 私钥失败: ${(e as Error).message}`);
+        }
+      } else if (!keyFile) {
+        // 有 RSA 私钥但未通过 findKeyFile 找到（例如嵌在 pem 中），不强制生成，提示用户。
+        console.log(
+          "检测到 RSA 私钥内容但未定位独立 .key 文件，若需单独文件请手动分离。"
+        );
+      }
+
+      await this.generateCrt(pemFile, keyFile || null);
     } catch (err) {
       logError(`生成 CRT 失败: ${(err as Error).message}`);
     }
   }
 
-  /**
-   * 从 PFX 文件提取 PEM 证书
-   */
+  /** 从 PFX 提取 PEM 证书（不含私钥） */
   private async extractPemFromPfx(pfxFile: string): Promise<string> {
     const pemOutput = path.join(
       this.directory,
       this.outputFileName + "_temp.pem"
     );
-
     try {
       console.log(`从 PFX 文件提取证书: ${pfxFile}`);
       const certCommand = `${this.opensslPath} pkcs12 -in "${pfxFile}" -clcerts -nokeys -out "${pemOutput}" -passin pass:${this.exportPassword}`;
@@ -54,38 +70,29 @@ export class CrtCertificateGenerator extends CertificateGeneratorBase {
     }
   }
 
-  /**
-   * 将 PEM 转换为 CRT 格式
-   */
+  /** 将 PEM 转为 CRT（扩展名变化，内容同 PEM） */
   private async generateCrt(pemFile: string, keyFile: string | null) {
     const crtOutput = path.join(this.directory, this.outputFileName + ".crt");
-    const keyOutput = keyFile
-      ? path.join(this.directory, path.basename(keyFile))
-      : path.join(this.directory, this.outputFileName + ".key");
-
+    const chosenKeyPath =
+      keyFile || path.join(this.directory, this.outputFileName + ".key");
     try {
       console.log(`生成 CRT 文件从 PEM: ${pemFile}`);
-
-      // PEM 转 CRT（实际上格式相同，只是扩展名不同）
       const crtCommand = `${this.opensslPath} x509 -in "${pemFile}" -out "${crtOutput}" -outform PEM`;
       await execCommand(crtCommand);
-
       console.log("\n✅ CRT 证书生成成功!");
       console.log(`📁 证书文件: ${crtOutput}`);
-
-      // 如果有私钥文件，复制或提示位置
       if (keyFile) {
-        const keyContent = await fs.readFile(keyFile, "utf8");
-        await fs.writeFile(keyOutput, keyContent);
-        console.log(`🔑 私钥文件: ${keyOutput}`);
-        console.log(
-          `\n💡 Apache 配置示例:\n   SSLCertificateFile ${crtOutput}\n   SSLCertificateKeyFile ${keyOutput}`
-        );
+        console.log(`🔑 使用的私钥: ${keyFile}`);
       } else {
         console.log(
-          `⚠️  注意: 未找到私钥文件。Apache 配置需要同时提供证书和私钥。`
+          "⚠️  未提供或生成独立私钥文件。若需要请确保目录中存在 .key 文件。"
         );
       }
+      console.log(
+        `\n💡 Apache 配置示例:\n   SSLCertificateFile ${crtOutput}\n   SSLCertificateKeyFile ${
+          keyFile || "<your-private-key-path>"
+        }`
+      );
     } catch (error) {
       logError(`生成 CRT 过程出错: ${(error as Error).message}`);
     }

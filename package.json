@@ -10,7 +10,7 @@
   },
   "scripts": {
     "build": "rollup -c && tsup && tsc --emitDeclarationOnly",
-    "prepublishOnly": "npm run build && np --no-cleanup --yolo --no-publish --any-branch",
+    "prepublishOnly": "npm run build && np --no-cleanup --yolo --no-publish --any-branch && npm run build",
     "test": "npm run test:unit && npm run test:integration",
     "test:unit": "cd tests/unit && chmod +x run-tests.sh && ./run-tests.sh",
     "test:integration": "cd tests && chmod +x test-all.sh && ./test-all.sh",

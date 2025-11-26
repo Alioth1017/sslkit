@@ -72,6 +72,26 @@ export abstract class CertificateGeneratorBase {
     return null;
   }
 
+  /**
+   * 查找目录中包含 RSA 私钥块（PKCS#1：BEGIN RSA PRIVATE KEY）的文件路径。
+   * 若找到则返回该文件路径，未找到返回 null。
+   */
+  protected async findRsaPrivateKey(files: FileInfo[]): Promise<string | null> {
+    for (const file of files) {
+      if (!file.isFile) continue;
+      if (!/(\.key|\.pem|\.pk8)$/i.test(file.fileName)) continue;
+      try {
+        const content = await fs.readFile(file.filePath, "utf8");
+        if (/[- ]+BEGIN RSA PRIVATE KEY[- ]+/.test(content)) {
+          return file.filePath;
+        }
+      } catch {
+        // ignore
+      }
+    }
+    return null;
+  }
+
   protected async findPemFile(files: FileInfo[]): Promise<string | null> {
     // 只匹配 CERTIFICATE，后面只能有空格和-，排除如 CERTIFICATE REQUEST
     const certificateBlockRegex = /-+\s*BEGIN\s+CERTIFICATE[ \t-]*\r?\n/;
