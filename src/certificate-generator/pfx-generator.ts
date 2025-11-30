@@ -1,7 +1,6 @@
 import * as path from "path";
-import { execCommand, logError, logInfo, logSuccess } from "../utils.ts";
-import type { FileInfo } from "./base.ts";
-import { CertificateGeneratorBase } from "./base.ts";
+import { execCommand, logError, logInfo, logSuccess } from "../utils";
+import { CertificateGeneratorBase } from "./base";
 
 export class PfxCertificateGenerator extends CertificateGeneratorBase {
   /**

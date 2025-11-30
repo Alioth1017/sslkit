@@ -1,8 +1,8 @@
 import * as fs from "fs";
 import * as path from "path";
 import { Command } from "commander";
-import type { Options } from "./index.ts";
-import { CertificateGenerator } from "./index.ts";
+import type { Options } from "./index";
+import { CertificateGenerator } from "./index";
 
 function getVersionSync(): string {
   try {

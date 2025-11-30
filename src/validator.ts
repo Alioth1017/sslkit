@@ -1,6 +1,6 @@
 import * as fs from "fs/promises";
 import * as path from "path";
-import { execPromise } from "./utils.ts";
+import { execPromise } from "./utils";
 
 /**
  * 验证器类，用于检查工具依赖和输入参数

@@ -6,9 +6,9 @@ import {
   logInfo,
   logSuccess,
   safeUnlink,
-} from "../utils.ts";
-import type { FileInfo } from "./base.ts";
-import { CertificateGeneratorBase } from "./base.ts";
+} from "../utils";
+import type { FileInfo } from "./base";
+import { CertificateGeneratorBase } from "./base";
 
 export class CrtCertificateGenerator extends CertificateGeneratorBase {
   /**

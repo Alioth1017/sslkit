@@ -9,7 +9,7 @@
     "sslkit": "dist/cli.js"
   },
   "scripts": {
-    "start": "ts-node src/cli.ts",
+    "start": "tsx src/cli.ts",
     "build": "rollup -c && tsup && tsc --emitDeclarationOnly",
     "prepublishOnly": "npm run build && np --no-cleanup --yolo --no-publish --any-branch && npm run build",
     "test": "npm run test:unit && npm run test:integration",
@@ -70,8 +70,8 @@
     "@types/node": "^22.0.2",
     "np": "^10.0.7",
     "rollup": "^4.19.2",
-    "ts-node": "^10.9.2",
     "tsup": "^8.2.3",
+    "tsx": "^4.20.6",
     "typescript": "^5.5.4"
   }
 }

@@ -1,8 +1,8 @@
 import * as path from "path";
 import * as fs from "fs/promises";
-import { logError, logInfo, logSuccess } from "../utils.ts";
-import type { FileInfo } from "./base.ts";
-import { CertificateGeneratorBase } from "./base.ts";
+import { logError, logInfo, logSuccess } from "../utils";
+import type { FileInfo } from "./base";
+import { CertificateGeneratorBase } from "./base";
 
 export class PemCertificateGenerator extends CertificateGeneratorBase {
   /**

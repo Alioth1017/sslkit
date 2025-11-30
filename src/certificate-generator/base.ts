@@ -1,6 +1,6 @@
 import * as path from "path";
 import * as fs from "fs/promises";
-import { execCommand } from "../utils.ts";
+import { execCommand } from "../utils";
 
 export type FileInfo = {
   filePath: string;
@@ -127,7 +127,7 @@ export abstract class CertificateGeneratorBase {
       const cleanCmd = `${this.opensslPath} pkey -in "${tempKeyPath}" -out "${keyOutput}"`;
       await execCommand(cleanCmd);
       // 清理临时文件
-      const { safeUnlink } = await import("../utils.ts");
+      const { safeUnlink } = await import("../utils");
       await safeUnlink(tempKeyPath);
       return keyOutput;
     } catch (error) {
