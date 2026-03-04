@@ -13,5 +13,5 @@ output/
 *.jks
 
 # 不忽略示例文件
-!fixtures/**/*.pfx
-!fixtures/**/*password.txt
+fixtures/
+!fixtures/generate-test-certs.sh

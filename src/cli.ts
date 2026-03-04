@@ -28,8 +28,8 @@ program
   .usage("[options]")
   .option(
     "-m, --mode <mode>",
-    "Certificate format to generate (pem|pfx|crt|jks)",
-    "pfx"
+    "Certificate format to generate (pem|pfx|crt|jks|all)",
+    "all"
   )
   .option(
     "-d, --directory <directory>",
@@ -55,6 +55,7 @@ program
     "after",
     `
 Examples:
+  $ sslkit -d ./certs -p myPassword          # Generate all formats (default)
   $ sslkit -m pfx -d ./certs -p myPassword -o server
   $ sslkit -m pem -d ./ssl -p password123
   $ sslkit -m crt -d /path/to/certs -o apache_cert

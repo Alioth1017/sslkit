@@ -1,20 +1,16 @@
 #!/bin/bash
-
 # 边缘案例测试 - 测试各种特殊情况
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
-OUTPUT_DIR="$SCRIPT_DIR/../output/edge-cases"
+source "$SCRIPT_DIR/lib.sh"
+
+OUTPUT_DIR="$OUTPUT_BASE/edge-cases"
 
 echo "🧪 边缘案例测试"
-echo "================"
-echo ""
 
-# 清理输出目录
-rm -rf "$OUTPUT_DIR"
-mkdir -p "$OUTPUT_DIR"
+setup_output_dir "$OUTPUT_DIR"
 
 PASSED=0
 FAILED=0
@@ -23,19 +19,13 @@ FAILED=0
 run_edge_case() {
   local test_name=$1
   local test_fn=$2
-  
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo "测试: $test_name"
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  
-  if $test_fn; then
-    echo "✅ $test_name 通过"
+  if $test_fn > /dev/null 2>&1; then
+    echo "  ✓ $test_name"
     PASSED=$((PASSED + 1))
   else
-    echo "❌ $test_name 失败"
+    echo "  ✗ $test_name"
     FAILED=$((FAILED + 1))
   fi
-  echo ""
 }
 
 # 测试 1: 空目录
@@ -43,9 +33,8 @@ test_empty_directory() {
   local test_dir="$OUTPUT_DIR/empty"
   mkdir -p "$test_dir"
   
-  cd "$PROJECT_DIR"
   # 应该报错但不崩溃
-  if node dist/cli.js -m pfx -d "$test_dir" 2>&1 | grep -q "未找到"; then
+  if run_sslkit_output -m pfx -d "$test_dir" | grep -q "未找到"; then
     return 0
   else
     return 1
@@ -54,9 +43,8 @@ test_empty_directory() {
 
 # 测试 2: 不存在的目录
 test_nonexistent_directory() {
-  cd "$PROJECT_DIR"
   # 应该报错但不崩溃
-  if node dist/cli.js -m pfx -d "/nonexistent/path" 2>&1 | grep -q "错误\|无法"; then
+  if run_sslkit_output -m pfx -d "/nonexistent/path" | grep -q "错误\|无法"; then
     return 0
   else
     return 1
@@ -65,8 +53,7 @@ test_nonexistent_directory() {
 
 # 测试 3: 无效的模式
 test_invalid_mode() {
-  cd "$PROJECT_DIR"
-  if node dist/cli.js -m invalid -d "." 2>&1 | grep -q "无效\|错误"; then
+  if run_sslkit_output -m invalid -d "." | grep -q "无效\|错误"; then
     return 0
   else
     return 1
@@ -77,12 +64,11 @@ test_invalid_mode() {
 test_special_characters_password() {
   local test_dir="$OUTPUT_DIR/special-pass"
   mkdir -p "$test_dir"
-  cp "$SCRIPT_DIR/../fixtures/sample-pem/certificate.pem" "$test_dir/"
-  cp "$SCRIPT_DIR/../fixtures/sample-pem/private.key" "$test_dir/"
+  cp "$FIXTURES_DIR/sample-pem/certificate.pem" "$test_dir/"
+  cp "$FIXTURES_DIR/sample-pem/private.key" "$test_dir/"
   
-  cd "$PROJECT_DIR"
   # 测试特殊字符密码
-  if node dist/cli.js -m pfx -d "$test_dir" -p 'P@ss!123#$' -o special 2>&1; then
+  if run_sslkit_output -m pfx -d "$test_dir" -p 'P@ss!123#$' -o special; then
     if [ -f "$test_dir/special.pfx" ]; then
       return 0
     fi
@@ -94,13 +80,12 @@ test_special_characters_password() {
 test_long_filename() {
   local test_dir="$OUTPUT_DIR/long-name"
   mkdir -p "$test_dir"
-  cp "$SCRIPT_DIR/../fixtures/sample-pem/certificate.pem" "$test_dir/"
-  cp "$SCRIPT_DIR/../fixtures/sample-pem/private.key" "$test_dir/"
+  cp "$FIXTURES_DIR/sample-pem/certificate.pem" "$test_dir/"
+  cp "$FIXTURES_DIR/sample-pem/private.key" "$test_dir/"
   
   local long_name="very_long_certificate_name_with_many_characters_to_test_edge_case"
   
-  cd "$PROJECT_DIR"
-  if node dist/cli.js -m pfx -d "$test_dir" -p test123 -o "$long_name" 2>&1; then
+  if run_sslkit_output -m pfx -d "$test_dir" -p test123 -o "$long_name"; then
     if [ -f "$test_dir/${long_name}.pfx" ]; then
       return 0
     fi
@@ -112,11 +97,10 @@ test_long_filename() {
 test_key_only() {
   local test_dir="$OUTPUT_DIR/key-only"
   mkdir -p "$test_dir"
-  cp "$SCRIPT_DIR/../fixtures/sample-pem/private.key" "$test_dir/"
+  cp "$FIXTURES_DIR/sample-pem/private.key" "$test_dir/"
   
-  cd "$PROJECT_DIR"
   # 应该报错
-  if node dist/cli.js -m pfx -d "$test_dir" 2>&1 | grep -q "未找到.*PEM"; then
+  if run_sslkit_output -m pfx -d "$test_dir" | grep -q "未找到.*PEM"; then
     return 0
   else
     return 1
@@ -127,11 +111,10 @@ test_key_only() {
 test_pem_only() {
   local test_dir="$OUTPUT_DIR/pem-only"
   mkdir -p "$test_dir"
-  cp "$SCRIPT_DIR/../fixtures/sample-pem/certificate.pem" "$test_dir/"
+  cp "$FIXTURES_DIR/sample-pem/certificate.pem" "$test_dir/"
   
-  cd "$PROJECT_DIR"
   # 应该报错
-  if node dist/cli.js -m pfx -d "$test_dir" 2>&1 | grep -q "未找到.*key\|私钥"; then
+  if run_sslkit_output -m pfx -d "$test_dir" | grep -q "未找到.*key\|私钥"; then
     return 0
   else
     return 1
@@ -142,15 +125,14 @@ test_pem_only() {
 test_file_exists() {
   local test_dir="$OUTPUT_DIR/exists"
   mkdir -p "$test_dir"
-  cp "$SCRIPT_DIR/../fixtures/sample-pem/certificate.pem" "$test_dir/"
-  cp "$SCRIPT_DIR/../fixtures/sample-pem/private.key" "$test_dir/"
+  cp "$FIXTURES_DIR/sample-pem/certificate.pem" "$test_dir/"
+  cp "$FIXTURES_DIR/sample-pem/private.key" "$test_dir/"
   
-  cd "$PROJECT_DIR"
   # 第一次生成
-  node dist/cli.js -m pfx -d "$test_dir" -p test123 -o exist_test > /dev/null 2>&1
+  run_sslkit_output -m pfx -d "$test_dir" -p test123 -o exist_test > /dev/null
   
   # 第二次生成（应该覆盖并警告）
-  if node dist/cli.js -m pfx -d "$test_dir" -p test123 -o exist_test 2>&1 | grep -q "警告\|已存在"; then
+  if run_sslkit_output -m pfx -d "$test_dir" -p test123 -o exist_test | grep -q "警告\|已存在"; then
     if [ -f "$test_dir/exist_test.pfx" ]; then
       return 0
     fi
@@ -169,20 +151,9 @@ run_edge_case "仅有 PEM 文件" test_pem_only
 run_edge_case "文件已存在" test_file_exists
 
 # 总结
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "📊 边缘案例测试总结"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "通过: $PASSED"
-echo "失败: $FAILED"
 echo ""
+echo "边缘案例: 通过 $PASSED 个，失败 $FAILED 个"
 
-# 清理
 rm -rf "$OUTPUT_DIR"
 
-if [ $FAILED -eq 0 ]; then
-  echo "🎉 所有边缘案例测试通过！"
-  exit 0
-else
-  echo "⚠️  有 $FAILED 个边缘案例测试失败"
-  exit 1
-fi
+[ $FAILED -eq 0 ] && exit 0 || exit 1

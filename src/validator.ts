@@ -90,7 +90,7 @@ export class Validator {
    * 验证证书模式
    */
   static validateMode(mode: string): boolean {
-    const validModes = ["pem", "pfx", "crt", "jks"];
+    const validModes = ["pem", "pfx", "crt", "jks", "all"];
     if (!validModes.includes(mode)) {
       console.error(
         `错误: 无效的模式 "${mode}"。有效选项: ${validModes.join(", ")}`
